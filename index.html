@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICD Message Creator</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500;1,600&family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1e1e1e;
+  --accent:#8b7d6b;
+  --border:#ddd8d0;
+  --bg:#e8e3d8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Cormorant Garamond',serif;
+  background:var(--bg);
+  min-height:100vh;
+  padding:28px 20px;
+  color:var(--ink);
+}
+
+.ph{text-align:center;margin-bottom:32px;}
+.ph h1{font-family:'Dancing Script',cursive;font-size:42px;font-weight:700;color:var(--ink);line-height:1;}
+.ph p{font-size:15px;color:var(--accent);font-style:italic;margin-top:7px;}
+.ph-rule{width:56px;height:2px;background:var(--accent);margin:12px auto 0;border-radius:2px;}
+
+.ws{display:grid;grid-template-columns:290px 1fr;gap:24px;max-width:1320px;margin:0 auto;align-items:start;}
+@media(max-width:1020px){.ws{grid-template-columns:1fr;}}
+
+.panel,.ctrl,.cw{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:12px;padding:24px;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+.plabel{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:block;}
+.cat{font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#c5bdb4;margin:16px 0 8px;display:block;}
+hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+.tb{
+  width:100%;padding:9px 12px;border:1px solid var(--border);background:transparent;
+  border-radius:7px;cursor:pointer;font-size:13px;font-family:'Cormorant Garamond',serif;
+  color:#3d3a35;transition:all .18s ease;text-align:left;margin-bottom:5px;
+  display:flex;align-items:center;gap:8px;line-height:1.3;
+}
+.tb:hover{background:#faf7f4;border-color:var(--accent);color:var(--ink);transform:translateX(2px);}
+.tb.on{background:var(--ink);color:#fafaf8;border-color:var(--ink);}
+
+.rp{display:flex;flex-direction:column;gap:20px;}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:18px 26px;}
+@media(max-width:680px){.ctrl{grid-template-columns:1fr;}}
+.fg{display:flex;flex-direction:column;gap:7px;}
+.fg.full{grid-column:1/-1;}
+.fl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);}
+
+input[type=text],textarea{
+  border:1px solid var(--border);border-radius:7px;padding:9px 12px;
+  font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--ink);
+  background:#fafaf8;transition:border-color .18s;width:100%;
+}
+input[type=text]:focus,textarea:focus{
+  outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(139,125,107,.1);background:#fff;
+}
+textarea{resize:vertical;min-height:92px;line-height:1.65;}
+
+.ltog{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.lbtn{flex:1;padding:9px 10px;border:none;background:#fafaf8;cursor:pointer;font-size:13px;font-family:'Cormorant Garamond',serif;color:#3d3a35;transition:all .18s;font-weight:500;}
+.lbtn:first-child{border-right:1px solid var(--border);}
+.lbtn.on{background:var(--ink);color:#fafaf8;}
+
+.srow{display:flex;gap:8px;flex-wrap:wrap;}
+.sw{
+  width:34px;height:34px;border-radius:7px;border:2.5px solid transparent;
+  cursor:pointer;transition:all .18s;position:relative;
+  box-shadow:0 1px 3px rgba(0,0,0,.13);
+}
+.sw:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,.16);}
+.sw.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink),0 0 0 4px rgba(0,0,0,.09);transform:translateY(-2px);}
+.sw.on::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.4);}
+
+.egrid{display:flex;gap:6px;flex-wrap:wrap;}
+.eb{
+  width:38px;height:38px;border:1px solid var(--border);background:#fafaf8;
+  border-radius:7px;cursor:pointer;font-size:20px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .18s;
+  font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
+  line-height:1;
+}
+.eb:hover{background:#faf7f4;transform:scale(1.12) translateY(-2px);}
+.eb.on{background:var(--ink);border-color:var(--ink);transform:scale(1.14) translateY(-3px);box-shadow:0 4px 10px rgba(0,0,0,.22);}
+.eb-none{font-family:inherit;font-size:15px;color:#999;}
+.eb-none.on{color:#fafaf8;}
+
+.cwlabel{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:block;}
+#cc{width:100%;height:auto;border-radius:6px;display:block;box-shadow:0 6px 28px rgba(0,0,0,.12);}
+
+.arow{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+.btn{padding:11px 26px;border-radius:7px;border:none;cursor:pointer;font-size:14px;font-family:'Cormorant Garamond',serif;font-weight:600;transition:all .18s;display:inline-flex;align-items:center;gap:8px;}
+.btn-d{background:var(--ink);color:#fafaf8;box-shadow:0 3px 10px rgba(0,0,0,.2);}
+.btn-d:hover{transform:translateY(-2px);box-shadow:0 5px 14px rgba(0,0,0,.28);}
+.btn-o{background:transparent;color:var(--ink);border:1.5px solid var(--accent);}
+.btn-o:hover{background:#faf7f4;transform:translateY(-2px);}
+.pf{text-align:center;margin-top:36px;font-size:12px;color:#bbb;font-style:italic;font-family:'Cormorant Garamond',serif;}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <h1>Message Creator</h1>
+  <p>Appreciation &middot; Personal &middot; Condolences &middot; for every meaningful moment</p>
+  <div class="ph-rule"></div>
+</div>
+
+<div class="ws">
+
+  <div class="panel">
+    <span class="plabel">Choose a message</span>
+    <span class="cat">Work Appreciation</span>
+    <button class="tb" onclick="pick(this,'project')">🎯 Project Achievement</button>
+    <button class="tb" onclick="pick(this,'help')">🤝 Help &amp; Support</button>
+    <button class="tb" onclick="pick(this,'leadership')">⭐ Leadership</button>
+    <button class="tb" onclick="pick(this,'innovation')">💡 Innovation</button>
+    <button class="tb" onclick="pick(this,'collaboration')">🌟 Collaboration</button>
+    <hr class="div">
+    <span class="cat">Personal</span>
+    <button class="tb" onclick="pick(this,'greeting')">👋 Greeting</button>
+    <button class="tb" onclick="pick(this,'newrole')">🎉 New Role</button>
+    <button class="tb" onclick="pick(this,'baby')">👶 Baby Arrival</button>
+    <button class="tb" onclick="pick(this,'wedding')">💍 Wedding</button>
+    <button class="tb" onclick="pick(this,'recovery')">💚 Recovery</button>
+    <button class="tb" onclick="pick(this,'anniversary')">🎂 Work Anniversary</button>
+    <hr class="div">
+    <span class="cat">Condolences</span>
+    <button class="tb" onclick="pick(this,'loss')">🤍 Loss of Loved One</button>
+    <button class="tb" onclick="pick(this,'sympathies')">🕌 Deepest Sympathies</button>
+    <button class="tb" onclick="pick(this,'strength')">🤲 Strength &amp; Sabr</button>
+    <button class="tb" onclick="pick(this,'dua')">📿 Du'a &amp; Remembrance</button>
+    <button class="tb" onclick="pick(this,'memory')">🌸 Cherished Memory</button>
+  </div>
+
+  <div class="rp">
+    <div class="ctrl">
+
+      <div class="fg">
+        <span class="fl">Language</span>
+        <div class="ltog">
+          <button class="lbtn on" id="lEN" onclick="setLang('en')">English</button>
+          <button class="lbtn"    id="lAR" onclick="setLang('ar')">&#x639;&#x631;&#x628;&#x64A;</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <span class="fl">Your Name</span>
+        <input type="text" id="senderName" placeholder="Your name" maxlength="40" oninput="draw()">
+      </div>
+
+      <div class="fg">
+        <span class="fl">Card Title</span>
+        <input type="text" id="cardTitle" placeholder="e.g. Well Done." maxlength="36" oninput="draw()">
+      </div>
+
+      <div class="fg full">
+        <span class="fl">Message</span>
+        <textarea id="msgBody" placeholder="Your message will appear here..." oninput="draw()"></textarea>
+      </div>
+
+      <div class="fg">
+        <span class="fl">Text Color</span>
+        <div class="srow">
+          <div class="sw on" style="background:#1e1e1e" onclick="setColor('#1e1e1e',this)" title="Ink"></div>
+          <div class="sw"    style="background:#3d3a35" onclick="setColor('#3d3a35',this)" title="Dark Warm"></div>
+          <div class="sw"    style="background:#8b7d6b" onclick="setColor('#8b7d6b',this)" title="Taupe"></div>
+          <div class="sw"    style="background:#2d6b15" onclick="setColor('#2d6b15',this)" title="ICD Dark Green"></div>
+          <div class="sw"    style="background:#5a9935" onclick="setColor('#5a9935',this)" title="ICD Mid Green"></div>
+          <div class="sw"    style="background:#7fbb42" onclick="setColor('#7fbb42',this)" title="ICD Light Green"></div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <span class="fl">Emoji</span>
+        <div class="egrid">
+          <button class="eb eb-none on" data-e="" onclick="pickEmoji(this)">&#x2715;</button>
+          <button class="eb" data-e="🤍"  onclick="pickEmoji(this)">🤍</button>
+          <button class="eb" data-e="⭐"  onclick="pickEmoji(this)">⭐</button>
+          <button class="eb" data-e="✨"  onclick="pickEmoji(this)">✨</button>
+          <button class="eb" data-e="🎉"  onclick="pickEmoji(this)">🎉</button>
+          <button class="eb" data-e="🙌"  onclick="pickEmoji(this)">🙌</button>
+          <button class="eb" data-e="👏"  onclick="pickEmoji(this)">👏</button>
+          <button class="eb" data-e="💪"  onclick="pickEmoji(this)">💪</button>
+          <button class="eb" data-e="🚀"  onclick="pickEmoji(this)">🚀</button>
+          <button class="eb" data-e="🌟"  onclick="pickEmoji(this)">🌟</button>
+          <button class="eb" data-e="💡"  onclick="pickEmoji(this)">💡</button>
+          <button class="eb" data-e="🎯"  onclick="pickEmoji(this)">🎯</button>
+          <button class="eb" data-e="🏆"  onclick="pickEmoji(this)">🏆</button>
+          <button class="eb" data-e="😊"  onclick="pickEmoji(this)">😊</button>
+          <button class="eb" data-e="🌸"  onclick="pickEmoji(this)">🌸</button>
+          <button class="eb" data-e="💐"  onclick="pickEmoji(this)">💐</button>
+          <button class="eb" data-e="🕌"  onclick="pickEmoji(this)">🕌</button>
+          <button class="eb" data-e="📿"  onclick="pickEmoji(this)">📿</button>
+          <button class="eb" data-e="🤲"  onclick="pickEmoji(this)">🤲</button>
+          <button class="eb" data-e="🌙"  onclick="pickEmoji(this)">🌙</button>
+          <button class="eb" data-e="🌿"  onclick="pickEmoji(this)">🌿</button>
+          <button class="eb" data-e="🫂"  onclick="pickEmoji(this)">🫂</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="cw">
+      <span class="cwlabel">Card Preview</span>
+      <canvas id="cc"></canvas>
+      <div class="arow">
+        <button class="btn btn-d" onclick="dlCard()">&#8595; Download Card</button>
+        <button class="btn btn-o" onclick="copyMsg()">&#9109; Copy Message</button>
+        <button class="btn btn-o" onclick="resetAll()">&#8635; Reset</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="pf">ICD Communication &amp; Corporate Marketing Division (CCMD) &middot; For every meaningful moment</p>
+
+<script>
+/* ================================================================
+   STATE
+================================================================ */
+var S = { lang:'en', title:'', body:'', sender:'', color:'#1e1e1e', emoji:'' };
+
+/* ================================================================
+   TEMPLATES
+================================================================ */
+var T = {
+  project:{
+    en:{ title:'Well Done.',
+         body:'What a wonderful achievement. Alhamdulillah, your dedication and sincere effort on this project truly made a difference for the whole team. May Allah bless your work, reward your efforts generously, and grant you continued success in all that you do.' },
+    ar:{ title:'ما شاء الله، أحسنت.',
+         body:'يا له من إنجاز رائع. الحمد لله، تفانيك وجهدك الصادق في هذا المشروع أحدثا فرقاً حقيقياً للفريق بأكمله. بارك الله في عملك وجزاك خير الجزاء ومنحك التوفيق والنجاح في كل ما تقوم به.' },
+    emoji:'🎯'
+  },
+  help:{
+    en:{ title:'Jazak Allahu Khayran.',
+         body:'Thank you so much for your generous help and sincere support. You stepped in without hesitation, and your contribution made all the difference. May Allah reward you with the very best of rewards and bless you in your time, health, and livelihood.' },
+    ar:{ title:'جزاك الله خيراً.',
+         body:'شكراً جزيلاً على مساعدتك السخية ودعمك الصادق. بادرت إلى المساندة دون تردد، وكان لإسهامك الأثر الكبير. أسأل الله أن يجزيك خير الجزاء ويبارك في وقتك وصحتك ورزقك.' },
+    emoji:'🤝'
+  },
+  leadership:{
+    en:{ title:'Barak Allahu Feek.',
+         body:'The way you lead with wisdom, patience, and sincerity truly uplifts everyone around you. Your guidance sets an admirable example for us all. May Allah bless your leadership, strengthen your resolve, and make your efforts a source of lasting good for the team.' },
+    ar:{ title:'بارك الله فيك.',
+         body:'الطريقة التي تقود بها بحكمة وصبر وإخلاص ترفع كل من حولك حقاً. توجيهاتك تضع مثالاً يُحتذى به لنا جميعاً. أسأل الله أن يبارك في قيادتك ويقوي عزيمتك ويجعل جهودك مصدر خير دائم للفريق.' },
+    emoji:'⭐'
+  },
+  innovation:{
+    en:{ title:"Masha'Allah, Brilliant.",
+         body:"Your creative thinking and innovative approach have brought great benefit to the whole team. You remind us that seeking better solutions is itself a form of excellence. May Allah grant you continued wisdom, bless your ideas, and make your work a means of benefit for all." },
+    ar:{ title:'ما شاء الله، رائع.',
+         body:'تفكيرك الإبداعي ونهجك المبتكر أسهما في إيجاد فائدة عظيمة للفريق بأكمله. تذكّرنا أن السعي نحو حلول أفضل هو في حد ذاته ضرب من الإتقان. أسأل الله أن يمنحك الحكمة المستمرة ويبارك في أفكارك.' },
+    emoji:'💡'
+  },
+  collaboration:{
+    en:{ title:'Alhamdulillah, Together.',
+         body:'Working alongside you has been a true blessing. Your cooperative spirit, generosity, and sincerity make every shared effort a joy. May Allah keep our bonds of brotherhood and sisterhood strong, bless our collective work, and unite us always upon what is good.' },
+    ar:{ title:'الحمد لله، معاً.',
+         body:'العمل إلى جانبك كان نعمة حقيقية. روحك التعاونية وكرمك وإخلاصك يجعلان كل جهد مشترك بهجة حقيقية. أسأل الله أن يديم أواصر الأخوة بيننا ويبارك في أعمالنا المشتركة ويجمعنا دائماً على الخير.' },
+    emoji:'🌟'
+  },
+  greeting:{
+    en:{ title:'Assalamu Alaikum.',
+         body:"Wishing you a blessed and productive day filled with ease, good health, and the contentment that comes from Allah's grace. May your affairs flow smoothly, your heart remain at peace, and your day be a source of good for everyone around you." },
+    ar:{ title:'السلام عليكم.',
+         body:'أتمنى لك يوماً مباركاً ومثمراً مليئاً باليسر والصحة والرضا الذي يأتي من فضل الله. أسأل الله أن يكون شأنك سهلاً وقلبك مطمئناً وأن يكون يومك مصدر خير لك ولكل من حولك.' },
+    emoji:'👋'
+  },
+  newrole:{
+    en:{ title:'Mabrook on Your New Role.',
+         body:'This is a well-deserved recognition of your talent, integrity, and commitment. This new responsibility is a trust, and we have every confidence you will carry it with excellence and dedication. May Allah grant you tawfiq, bless your new role, and make it a source of great good.' },
+    ar:{ title:'مبروك على منصبك الجديد.',
+         body:'هذا تقدير مستحق لموهبتك ونزاهتك والتزامك. هذه المسؤولية الجديدة أمانة، ونثق تمام الثقة أنك ستؤديها بإتقان وتفانٍ. أسأل الله أن يمنحك التوفيق ويبارك في منصبك الجديد ويجعله مصدر خير عظيم.' },
+    emoji:'🎉'
+  },
+  baby:{
+    en:{ title:'Mabrook on the New Baby.',
+         body:"What blessed and joyful news. May Allah grant your child a life filled with health, righteousness, and goodness. May He fill your home with barakah, love, and tranquility, and raise this little one to be a source of pride and benefit for the ummah." },
+    ar:{ title:'مبروك على المولود.',
+         body:'ما أبرك هذه الأخبار وأفرحها. أسأل الله أن يهب مولودك حياة مليئة بالصحة والصلاح والخير. وأن يملأ الله بيتكم بركةً ومحبةً وسكينة، وأن يربي هذا الصغير ليكون مصدر فخر ونفع للأمة.' },
+    emoji:'👶'
+  },
+  wedding:{
+    en:{ title:'Barak Allahu Lakuma.',
+         body:'May Allah bless you both, shower His blessings upon you, and unite you in all that is good. May He fill your home with love, mercy, and tranquility, and make your life together a source of happiness, strength, and closeness to Him. Congratulations on this beautiful new beginning.' },
+    ar:{ title:'بارك الله لكما.',
+         body:'بارك الله لكما وبارك عليكما وجمع بينكما في خير. أسأل الله أن يملأ بيتكما محبةً ورحمةً وسكينة، وأن يجعل حياتكما معاً مصدر سعادة وقوة وقربٍ منه سبحانه. مبروك على هذه البداية الجميلة.' },
+    emoji:'💍'
+  },
+  recovery:{
+    en:{ title:'Wishing You a Full Recovery.',
+         body:"We ask Allah, the Lord of the Magnificent Throne, to grant you a complete and swift recovery. Know that illness is an expiation and a raising of rank for the believer. You are in our du'a and in our hearts. May Allah return you to full health and strength very soon." },
+    ar:{ title:'شفاءً عاجلاً تاماً.',
+         body:'نسأل الله العظيم رب العرش العظيم أن يشفيك شفاءً عاجلاً كاملاً. اعلم أن المرض كفارة ورفعة للمؤمن. أنت في دعائنا وقلوبنا. أسأل الله أن يعيدك إلى كامل صحتك وعافيتك قريباً جداً.' },
+    emoji:'💚'
+  },
+  anniversary:{
+    en:{ title:'Thank You, Jazak Allahu Khayran.',
+         body:'Another year of sincere dedication, honest effort, and genuine contribution. Your commitment to this team is something we are truly grateful for. May Allah bless your years of service, reward every hour given, and grant you continued barakah in your work and in your life.' },
+    ar:{ title:'جزاك الله خيراً.',
+         body:'عام آخر من التفاني الصادق والجهد الأمين والإسهام الحقيقي. التزامك بهذا الفريق أمر نحمد الله عليه حقاً. أسأل الله أن يبارك في سنوات خدمتك ويجزيك عن كل ساعة بذلتها، ويمنحك البركة الدائمة في عملك وحياتك.' },
+    emoji:'🎂'
+  },
+  loss:{
+    en:{ title:"Inna Lillahi Wa Inna Ilayhi Raji'un.",
+         body:"To Allah we belong, and to Him we return. We share deeply in your grief and ask Allah to have mercy upon your loved one, to forgive them, and to grant them the highest place in Jannatul Firdaus. May Allah give you and your family beautiful patience and strength in this time of sorrow." },
+    ar:{ title:'إنا لله وإنا إليه راجعون.',
+         body:'إنا لله وإنا إليه راجعون. نشاركك الحزن العميق ونسأل الله أن يرحم فقيدك ويغفر له ويسكنه أعلى درجات جنة الفردوس. أسأل الله أن يمنحك وعائلتك الصبر الجميل والقوة في هذا الوقت العصيب.' },
+    emoji:'🤍'
+  },
+  sympathies:{
+    en:{ title:'May Allah Grant Them Jannah.',
+         body:"Inna lillahi wa inna ilayhi raji'un. Our hearts are with you and your family. We make du'a to Allah to surround your loved one with His mercy, to illuminate their resting place with light, and to grant them the company of the righteous. May He give you beautiful patience and replace your sorrow with goodness." },
+    ar:{ title:'أسكنهم الله الفردوس الأعلى.',
+         body:'إنا لله وإنا إليه راجعون. قلوبنا معك ومع عائلتك. ندعو الله أن يحيط فقيدكم برحمته ويضيء مثواه بالنور ويجعله في صحبة الصالحين. أسأل الله أن يمنحك الصبر الجميل وأن يعوضك عن مصابك بالخير.' },
+    emoji:'🕌'
+  },
+  strength:{
+    en:{ title:'Sabran Jameelan.',
+         body:"May Allah grant you the beautiful patience He promised to those who are tested. Your loved one's soul is in the hands of the Most Merciful, and that is the greatest comfort of all. We are here beside you. May Allah lift the weight of your grief and fill your heart with trust in His perfect wisdom." },
+    ar:{ title:'صبراً جميلاً.',
+         body:'أسأل الله أن يمنحك الصبر الجميل الذي وعد به المبتلين. روح فقيدك في قبضة أرحم الراحمين، وهذا أعظم عزاء. نحن هنا إلى جانبك. أسأل الله أن يرفع ثقل حزنك ويملأ قلبك بالثقة في حكمته الكاملة سبحانه.' },
+    emoji:'🤲'
+  },
+  dua:{
+    en:{ title:"In Our Du'a Always.",
+         body:"You and your family are in our du'a. We ask Allah to surround you with His mercy and to grant your loved one forgiveness, acceptance of their deeds, and entry into Paradise without reckoning. May He give you the certainty that His wisdom is perfect and His mercy is vast beyond measure." },
+    ar:{ title:'في دعائنا دائماً.',
+         body:'أنت وعائلتك في دعائنا. نسأل الله أن يغفر لفقيدكم ويتقبل أعماله ويدخله الجنة بغير حساب. أسأل الله أن يمنحك اليقين بأن حكمته سبحانه كاملة ورحمته أوسع من أن تُحاط.' },
+    emoji:'📿'
+  },
+  memory:{
+    en:{ title:'Their Memory Lives On.',
+         body:"The righteous never truly leave us. Their kind words, their good deeds, and the hearts they touched remain as ongoing sadaqah jariyah. May Allah accept all that your loved one gave, preserve their memory with light, and allow their goodness to continue reaching them. They are in a better place, in sha' Allah." },
+    ar:{ title:'ذكراهم الطيبة باقية.',
+         body:'الصالحون لا يغادروننا حقاً. كلماتهم الطيبة وأعمالهم الصالحة والقلوب التي لمسوها تبقى صدقة جارية. أسأل الله أن يتقبل كل ما قدّمه فقيدكم ويحفظ ذكراهم بالنور ويجعل حسناتهم تستمر في بلوغهم. هم في مكان أفضل، إن شاء الله.' },
+    emoji:'🌸'
+  }
+};
+
+/* ================================================================
+   LOGO
+================================================================ */
+var logoImg = new Image();
+logoImg.crossOrigin = 'anonymous';
+logoImg.src = 'https://i.ibb.co/hFvmBTj9/ICD-25-Logo-3.png';
+logoImg.onload  = function(){ draw(); };
+logoImg.onerror = function(){ logoImg = null; draw(); };
+
+/* ================================================================
+   EMOJI  - offscreen canvas for reliable colour rendering
+================================================================ */
+var emojiCache = {};
+function getEmojiCanvas(emoji, size) {
+  var key = emoji + '_' + size;
+  if (emojiCache[key]) return emojiCache[key];
+  var oc  = document.createElement('canvas');
+  oc.width = oc.height = Math.ceil(size * 1.3);
+  var ox  = oc.getContext('2d');
+  ox.clearRect(0, 0, oc.width, oc.height);
+  ox.font          = size + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",Arial';
+  ox.textAlign     = 'center';
+  ox.textBaseline  = 'middle';
+  ox.fillText(emoji, oc.width / 2, oc.height / 2);
+  emojiCache[key]  = oc;
+  return oc;
+}
+
+/* ================================================================
+   PICK TEMPLATE
+================================================================ */
+function pick(btn, key) {
+  document.querySelectorAll('.tb').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  var t = T[key][S.lang];
+  document.getElementById('cardTitle').value = t.title;
+  document.getElementById('msgBody').value   = t.body;
+  activateEmoji(T[key].emoji);
+  draw();
+}
+
+function setLang(l) {
+  S.lang = l;
+  document.getElementById('lEN').classList.toggle('on', l==='en');
+  document.getElementById('lAR').classList.toggle('on', l==='ar');
+  var active = document.querySelector('.tb.on');
+  if (active) {
+    var m = active.getAttribute('onclick').match(/'([^']+)'\)/);
+    if (m && T[m[1]]) {
+      var t = T[m[1]][l];
+      document.getElementById('cardTitle').value = t.title;
+      document.getElementById('msgBody').value   = t.body;
+    }
+  }
+  draw();
+}
+
+function setColor(c, el) {
+  S.color = c;
+  document.querySelectorAll('.sw').forEach(function(s){
+    if ((s.getAttribute('onclick')||'').indexOf('setColor')===0) s.classList.remove('on');
+  });
+  el.classList.add('on');
+  draw();
+}
+
+function pickEmoji(btn) {
+  document.querySelectorAll('.eb').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  S.emoji = btn.getAttribute('data-e') || '';
+  draw();
+}
+
+function activateEmoji(e) {
+  var found = false;
+  document.querySelectorAll('.eb').forEach(function(b){
+    b.classList.remove('on');
+    if (b.getAttribute('data-e') === e) { b.classList.add('on'); found = true; }
+  });
+  if (!found) document.querySelector('.eb[data-e=""]').classList.add('on');
+  S.emoji = found ? e : '';
+}
+
+/* ================================================================
+   HELPERS - text splitting (pure measurement, no drawing)
+================================================================ */
+function splitLines(ctx, text, maxW) {
+  var words = text.split(' ');
+  var lines = [], cur = '';
+  for (var i = 0; i < words.length; i++) {
+    var w = words[i];
+    var test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [text];
+}
+
+/* ================================================================
+   MEASURE PASS
+   Runs all the same logic as the draw pass but never calls fillText
+   or strokeRect. Returns the exact canvas height needed.
+
+   W is fixed at 1000px. We measure:
+     topPad + emoji? + title + underline + body + signature + botPad
+================================================================ */
+function measureHeight(ctx, W) {
+  var isAr = (S.lang === 'ar');
+  var PAD  = 56;
+
+  var titleText  = S.title || (isAr ? 'ممتنّون لك.' : 'Truly Grateful.');
+  var bodyText   = S.body  || (isAr ? 'اكتب رسالتك هنا...' : 'Your message will appear here...');
+  var sigText    = S.sender|| (isAr ? '[اسمك]' : '[Your name]');
+
+  /* -- FONTS -- */
+  var titleFont  = isAr ? 'bold 64px Cairo' : 'italic 700 82px "Dancing Script"';
+  var titleLineH = isAr ? 74 : 88;
+  var msgFont    = isAr ? '400 15px Cairo'  : 'italic 500 17px "Cormorant Garamond"';
+  var msgLineH   = isAr ? 24 : 27;
+  var sigFont    = isAr ? '600 21px Cairo'  : 'italic 700 26px "Dancing Script"';
+
+  /* widths */
+  var titleMaxW  = W * 0.54 - PAD - 10;
+  var msgMaxW    = W * 0.50 - PAD - 6;
+
+  /* ---- measure title ---- */
+  ctx.font = titleFont;
+  var titleLines = splitLines(ctx, titleText, titleMaxW);
+  var titleBlockH = titleLines.length * titleLineH;
+
+  /* ---- measure body ---- */
+  ctx.font = msgFont;
+  var bodyLines = splitLines(ctx, bodyText, msgMaxW);
+  var bodyBlockH = bodyLines.length * msgLineH;
+
+  /* ---- measure signature height (single line) ---- */
+  ctx.font = sigFont;
+  var sigH = isAr ? 26 : 30;
+
+  /* ---- top section height ---- */
+  /* topPad = 42; emoji adds ~56px; title baseline offset */
+  var topPad    = 42;
+  var emojiH    = S.emoji ? 62 : 0;  /* emoji block height */
+  var titleBaseline = isAr ? 58 : 66;
+
+  /* underline gap */
+  var ulGap     = isAr ? 18 : 14;
+  /* gap between underline and body start */
+  var bodyGap   = isAr ? 30 : 28;
+  /* gap between body end and signature */
+  var sigGap    = isAr ? 28 : 24;
+  /* bottom padding */
+  var botPad    = 52;
+
+  /* ---- left column total height ---- */
+  var leftH = topPad + emojiH + titleBaseline + titleBlockH + ulGap;
+  /* ---- right column (body + sig) starts at ulY level ---- */
+  var rightH = topPad + emojiH + titleBaseline + (titleLines.length - 1) * titleLineH + ulGap + bodyGap + bodyBlockH + sigGap + sigH;
+
+  var contentH = Math.max(leftH, rightH) + botPad;
+
+  /* clamp: min 380, max 900 */
+  return Math.max(380, Math.min(900, contentH));
+}
+
+/* ================================================================
+   DRAW - two-pass: measure then render
+================================================================ */
+function draw() {
+  S.title  = (document.getElementById('cardTitle').value  || '').trim();
+  S.body   = (document.getElementById('msgBody').value    || '').trim();
+  S.sender = (document.getElementById('senderName').value || '').trim();
+
+  var canvas = document.getElementById('cc');
+  var ctx    = canvas.getContext('2d');
+
+  /* ── Fixed width, dynamic height ── */
+  var W   = 1000;
+  var PAD = 56;
+  var isAr = (S.lang === 'ar');
+  var ink  = S.color;
+
+  /* ── PASS 1: measure ── */
+  var H = measureHeight(ctx, W);
+
+  /* ── Resize canvas if needed (avoids full repaint flicker) ── */
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width  = W;
+    canvas.height = H;
+  }
+
+  /* ── Background ── */
+  ctx.fillStyle = '#fafaf8';
+  ctx.fillRect(0, 0, W, H);
+
+  /* ── Paper grain ── */
+  for (var g = 0; g < 3000; g++) {
+    ctx.fillStyle = 'rgba(0,0,0,' + (Math.random() * 0.011) + ')';
+    ctx.fillRect(Math.random()*W, Math.random()*H, Math.random()*1.2, Math.random()*1.2);
+  }
+
+  /* ── Inner border ── */
+  ctx.strokeStyle = 'rgba(0,0,0,.07)';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(26, 26, W - 52, H - 52);
+
+  /* ── ICD Logo top-right ── */
+  var LOGO_H = 40;
+  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+    var asp   = logoImg.naturalWidth / logoImg.naturalHeight;
+    var LOGO_W = Math.round(LOGO_H * asp);
+    ctx.drawImage(logoImg, W - PAD - LOGO_W, 30, LOGO_W, LOGO_H);
+  } else {
+    ctx.font = 'bold 11px "Cormorant Garamond",serif';
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.textAlign = 'right';
+    ctx.direction = 'ltr';
+    ctx.fillText('ICD', W - PAD, 54);
+  }
+
+  /* ================================================================
+     PASS 2: RENDER - top-to-bottom cursor
+  ================================================================ */
+  var curY = 42;
+
+  /* ── Emoji ── */
+  if (S.emoji) {
+    var EC = getEmojiCanvas(S.emoji, 44);
+    ctx.drawImage(EC, PAD, curY, EC.width, EC.height);
+    curY += EC.height + 8;
+  }
+
+  /* ── Fonts & dimensions ── */
+  var titleFont  = isAr ? 'bold 64px Cairo'  : 'italic 700 82px "Dancing Script"';
+  var titleLineH = isAr ? 74                  : 88;
+  var msgFont    = isAr ? '400 15px Cairo'   : 'italic 500 17px "Cormorant Garamond"';
+  var msgLineH   = isAr ? 24                  : 27;
+
+  var titleMaxW  = W * 0.54 - PAD - 10;
+  var msgMaxW    = W * 0.50 - PAD - 6;
+
+  /* ── Title ── */
+  var titleText = S.title || (isAr ? 'ممتنّون لك.' : 'Truly Grateful.');
+  ctx.font      = titleFont;
+  var titleLines = splitLines(ctx, titleText, titleMaxW);
+
+  var titleY     = curY + (isAr ? 58 : 66);
+  ctx.fillStyle  = ink;
+
+  if (isAr) {
+    ctx.direction = 'rtl';
+    ctx.textAlign = 'right';
+    var tzR = W * 0.54;
+    for (var i = 0; i < titleLines.length; i++) {
+      ctx.fillText(titleLines[i], tzR, titleY + i * titleLineH);
+    }
+  } else {
+    ctx.direction = 'ltr';
+    ctx.textAlign = 'left';
+    for (var i = 0; i < titleLines.length; i++) {
+      ctx.fillText(titleLines[i], PAD, titleY + i * titleLineH);
+    }
+  }
+
+  var titleBottomY = titleY + (titleLines.length - 1) * titleLineH;
+
+  /* ── Underline ── */
+  var ulY = titleBottomY + (isAr ? 18 : 14);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth   = 1.8;
+  ctx.lineCap     = 'round';
+  ctx.direction   = 'ltr';
+  ctx.beginPath();
+  ctx.moveTo(PAD,             ulY);
+  ctx.lineTo(PAD + W * 0.48, ulY);
+  ctx.stroke();
+
+  /* ── Body message (right half, right-aligned) ── */
+  var bodyText  = S.body || (isAr ? 'اكتب رسالتك هنا...' : 'Your message will appear here...');
+  var msgStartY = ulY + (isAr ? 30 : 28);
+
+  ctx.font      = msgFont;
+  ctx.fillStyle = ink;
+
+  var bodyLines;
+  if (isAr) {
+    ctx.direction = 'rtl';
+    ctx.textAlign = 'right';
+    bodyLines = splitLines(ctx, bodyText, msgMaxW);
+    for (var j = 0; j < bodyLines.length; j++) {
+      ctx.fillText(bodyLines[j], W - PAD, msgStartY + j * msgLineH);
+    }
+  } else {
+    ctx.direction = 'ltr';
+    ctx.textAlign = 'right';
+    bodyLines = splitLines(ctx, bodyText, msgMaxW);
+    for (var j = 0; j < bodyLines.length; j++) {
+      ctx.fillText(bodyLines[j], W - PAD, msgStartY + j * msgLineH);
+    }
+  }
+
+  var bodyEndY = msgStartY + bodyLines.length * msgLineH;
+
+  /* ── Signature ── */
+  var sigFont = isAr ? '600 21px Cairo' : 'italic 700 26px "Dancing Script"';
+  var sigY    = bodyEndY + (isAr ? 28 : 24);
+  var sigCapY = H - 44;
+  if (sigY > sigCapY) sigY = sigCapY;
+
+  var sigText   = S.sender || (isAr ? '[اسمك]' : '[Your name]');
+  ctx.font      = sigFont;
+  ctx.fillStyle = ink;
+  if (isAr) { ctx.direction = 'rtl'; ctx.textAlign = 'right'; }
+  else       { ctx.direction = 'ltr'; ctx.textAlign = 'right'; }
+  ctx.fillText(sigText, W - PAD, sigY);
+
+  /* ── Watermark ── */
+  ctx.font      = '10px "Cormorant Garamond",serif';
+  ctx.direction = 'ltr';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(0,0,0,.15)';
+  ctx.fillText('ICD \u00B7 CCMD', PAD, H - 30);
+}
+
+/* ================================================================
+   ACTIONS
+================================================================ */
+function dlCard() {
+  var c = document.getElementById('cc');
+  var a = document.createElement('a');
+  a.href     = c.toDataURL('image/png');
+  a.download = 'ICD_Message.png';
+  a.click();
+}
+
+function copyMsg() {
+  var txt = (S.emoji ? S.emoji + '\n' : '')
+          + S.title + '\n\n'
+          + S.body  + '\n\n'
+          + (S.sender || '');
+  navigator.clipboard.writeText(txt)
+    .then(function(){ alert('Copied!'); })
+    .catch(function(){ alert('Could not copy - please copy manually.'); });
+}
+
+function resetAll() {
+  document.getElementById('cardTitle').value  = '';
+  document.getElementById('msgBody').value    = '';
+  document.getElementById('senderName').value = '';
+  S = { lang:'en', title:'', body:'', sender:'', color:'#1e1e1e', emoji:'' };
+  document.querySelectorAll('.tb').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.eb').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelector('.eb[data-e=""]').classList.add('on');
+  document.querySelectorAll('.sw').forEach(function(s){
+    if ((s.getAttribute('onclick')||'').indexOf('setColor')===0) s.classList.remove('on');
+  });
+  document.querySelector('[onclick="setColor(\'#1e1e1e\',this)"]').classList.add('on');
+  document.getElementById('lEN').classList.add('on');
+  document.getElementById('lAR').classList.remove('on');
+  draw();
+}
+
+/* ================================================================
+   INIT
+================================================================ */
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(function(){ draw(); });
+} else {
+  setTimeout(draw, 800);
+}
+</script>
+</body>
+</html>
