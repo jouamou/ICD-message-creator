@@ -228,7 +228,7 @@ const D2R = Math.PI / 180, PL = 62; // PL: a petal's length in mark units (the m
 // Petals are not symmetric. Turning petal i to (MIRROR[i] - out) gives the closest match to its mirror image at `out`
 // (found numerically against the outline), so Arabic layouts mirror the English ones without flipping official shapes.
 const MIRROR = [330.5, 199, 96, 326.5, 108];
-const P = { bands: new Path2D(BRAND.mark.bands), petals: BRAND.mark.petals.map((p) => new Path2D(p.d)) };
+const P = { bands: new Path2D(BRAND.mark.bands), core: new Path2D(BRAND.mark.core), petals: BRAND.mark.petals.map((p) => new Path2D(p.d)) };
 const LG = {};
 for (const k of ['logo', 'logoWhite']) LG[k] = { box: BRAND[k].box, items: BRAND[k].items.map((i) => ({ p: new Path2D(i.d), f: i.f, eo: i.eo })) };
 const LR = (LG.logo.box[2] - LG.logo.box[0]) / (LG.logo.box[3] - LG.logo.box[1]); // logo width / height
@@ -299,13 +299,13 @@ const TEMPLATES = [
     en: { title: 'Assalamu Alaikum.', body: "Wishing you a blessed and productive day filled with ease, good health, and the contentment that comes from Allah's grace. May your affairs flow smoothly, your heart remain at peace, and your day be a source of good for everyone around you." },
     ar: { title: 'السلام عليكم.', body: 'أتمنى لك يوماً مباركاً ومثمراً مليئاً باليسر والصحة والرضا الذي يأتي من فضل الله. أسأل الله أن يكون شأنك سهلاً وقلبك مطمئناً وأن يكون يومك مصدر خير لك ولكل من حولك.' } },
 
-  { id: 'ramadan', cat: 'occasion', name: 'Ramadan',
+  { id: 'ramadan', cat: 'occasion', name: 'Ramadan', design: 'crescent', tone: 'navy',
     en: { title: 'Ramadan Mubarak.', body: 'May this blessed month bring you and your family peace, mercy and closeness to Allah. May He accept your fasting, your prayers and your good deeds, and let you reach Laylat al-Qadr in the best of states.' },
     ar: { title: 'رمضان مبارك.', body: 'أسأل الله أن يجعل هذا الشهر الكريم شهر سلام ورحمة وقرب منه لك ولأسرتك، وأن يتقبل صيامك وقيامك وصالح أعمالك، ويبلّغك ليلة القدر وأنت في أحسن حال.' } },
-  { id: 'eidfitr', cat: 'occasion', name: 'Eid al-Fitr',
+  { id: 'eidfitr', cat: 'occasion', name: 'Eid al-Fitr', design: 'dome', tone: 'teal',
     en: { title: 'Eid Mubarak.', body: 'Taqabbal Allahu minna wa minkum. May Allah accept our fasting and prayers, and fill your home with joy, peace and blessings on this Eid al-Fitr and always.' },
     ar: { title: 'عيد مبارك.', body: 'تقبّل الله منا ومنكم. أسأل الله أن يتقبل صيامنا وقيامنا، وأن يملأ بيتكم فرحاً وسلاماً وبركة في عيد الفطر وفي كل حين.' } },
-  { id: 'eidadha', cat: 'occasion', name: 'Eid al-Adha',
+  { id: 'eidadha', cat: 'occasion', name: 'Eid al-Adha', design: 'kaaba', tone: 'sand',
     en: { title: 'Eid al-Adha Mubarak.', body: 'May Allah accept your sacrifice and your good deeds, and bless you and your loved ones with health, joy and abundance. Wishing you a blessed Eid, and may it return to you many times in goodness.' },
     ar: { title: 'عيد أضحى مبارك.', body: 'أسأل الله أن يتقبل أضحيتكم وصالح أعمالكم، وأن يبارك لكم ولأحبتكم بالصحة والفرح والخير الوفير. كل عام وأنتم بخير، وأعاده الله عليكم بالخير والبركات.' } },
   { id: 'hajj', cat: 'occasion', name: 'Hajj',
@@ -356,6 +356,14 @@ function textBlock(K, r, o) {
   if (!fields.length) return null;
   const build = (T) => {
     const B = T * (o.ratio || 0.4); let h = 0; const blocks = [];
+    if (o.kicker && o.kicker.text) {
+      // a small date line above everything, letter-spaced in English (never in Arabic: it would break the joins)
+      const rtl = isRTL(o.kicker.text), size = B * 0.78, ls = rtl ? 0 : size * 0.16, t = rtl ? o.kicker.text : o.kicker.text.toUpperCase();
+      ctx.font = `700 ${size}px ${rtl ? AR : LAT}`; ctx.letterSpacing = ls + 'px';
+      const widest = ctx.measureText(t).width; ctx.letterSpacing = '0px';
+      blocks.push({ k: 'kicker', font: ctx.font, size, color: o.kicker.color, lh: size * (rtl ? 1.7 : 1.3), lines: [t], gap: 0, rule: false, widest, ls });
+      h += size * (rtl ? 1.7 : 1.3);
+    }
     for (const f of fields) {
       const rtl = isRTL(f.t), fam = rtl ? AR : LAT;
       let size, weight, color, lhK;
@@ -367,7 +375,8 @@ function textBlock(K, r, o) {
       const prev = blocks[blocks.length - 1];
       let gap = 0, rule = false;
       if (prev) {
-        if (f.k === 'title') gap = B * 0.55;
+        if (prev.k === 'kicker') gap = B * 0.7;
+        else if (f.k === 'title') gap = B * 0.55;
         else if (f.k === 'body') { if (prev.k === 'title' && o.rule) { rule = true; gap = T * 0.3 + B * 1.3; } else gap = prev.k === 'title' ? T * 0.38 : B * 0.6; }
         else if (f.k === 'from') gap = B * 1.45;
         else if (f.k === 'role') gap = prev.k === 'from' ? B * 0.05 : B * 1.45;
@@ -394,16 +403,46 @@ function textBlock(K, r, o) {
       const rx = o.align === 'center' ? r.x + (r.w - len) / 2 : right ? r.x + r.w - len : r.x;
       ctx.fillStyle = o.rule; ctx.fillRect(rx, ry - th / 2, len, th);
     }
-    y += b.gap; ctx.font = b.font; ctx.fillStyle = b.color;
+    y += b.gap; ctx.font = b.font; ctx.fillStyle = b.color; ctx.letterSpacing = (b.ls || 0) + 'px';
     for (const line of b.lines) {
       ctx.direction = isRTL(line) ? 'rtl' : 'ltr';
-      if (o.align === 'center') { ctx.textAlign = 'center'; ctx.fillText(line, r.x + r.w / 2, y + b.lh / 2); }
+      if (o.align === 'center') { ctx.textAlign = 'center'; ctx.fillText(line, r.x + r.w / 2 + (b.ls || 0) / 2, y + b.lh / 2); }
       else { ctx.textAlign = right ? 'right' : 'left'; ctx.fillText(line, right ? r.x + r.w : r.x, y + b.lh / 2); }
       y += b.lh;
     }
   }
-  ctx.restore();
+  ctx.letterSpacing = '0px'; ctx.restore();
   return [top, y];
+}
+
+// ------------------------------------------------------------------ the Hijri date line (Ramadan and Eid designs)
+// The coming `day` of `month` on the Umm al-Qura calendar (1 Ramadan, 1 Shawwal, 10 Dhu al-Hijjah): its Hijri year and
+// the Gregorian year it falls in. Up to `back` days after that day, the current one still counts.
+const HIJRI = {};
+function nextHijri(month, back, day = 1) {
+  const key = month + ':' + back + ':' + day;
+  if (key in HIJRI) return HIJRI[key];
+  let out = null;
+  try {
+    const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    const now = new Date(); now.setHours(12, 0, 0, 0);
+    for (let d = -back; d < 420 && !out; d++) {
+      const t = new Date(now.getTime() + d * 864e5), p = {};
+      for (const x of f.formatToParts(t)) p[x.type] = x.value;
+      if (+p.month === month && +p.day === day) out = { h: parseInt(p.year, 10), g: t.getFullYear() };
+    }
+  } catch (e) { out = null; }
+  if (out && !(out.h > 1400 && out.h < 1600)) out = null; // the browser does not know the calendar
+  return (HIJRI[key] = out);
+}
+// "1448 AH · 2027", or the Arabic "١٤٤٨ هـ · ٢٠٢٧ م"; empty when the browser cannot tell
+// month 9: Ramadan (counts while it lasts), 10: Eid al-Fitr, 12: Eid al-Adha (10 Dhu al-Hijjah, and the days of Eid)
+const HIJRI_DAYS = { 9: [29, 1], 10: [10, 1], 12: [4, 10] };
+function hijriLine(month, lang) {
+  const [back, day] = HIJRI_DAYS[month], n = nextHijri(month, back, day);
+  if (!n) return '';
+  if (lang === 'ar') { const a = (x) => x.toLocaleString('ar-SA', { useGrouping: false }); return `${a(n.h)} هـ · ${a(n.g)} م`; }
+  return `${n.h} AH · ${n.g}`;
 }
 
 // ------------------------------------------------------------------ drawing kit
@@ -441,8 +480,130 @@ function kit(ctx, fmt, st) {
   };
   K.text = (r, o) => textBlock(K, r, { ink: T.ink, sub: T.sub, align: 'start', valign: 'middle', ...o });
   K.pent = (cx, cy, R) => { const p = new Path2D(); for (let i = 0; i < 5; i++) { const a = (-90 + i * 72) * D2R; p[i ? 'lineTo' : 'moveTo'](cx + R * Math.cos(a), cy + R * Math.sin(a)); } p.closePath(); return p; };
+
+  // ---- occasion art, built from the mark itself (Ramadan and the two Eids). The crescent is cut from the whole mark,
+  // the lantern is the core pentagon hung point-down with a petal for its flame, and the mosque's dome is the mark
+  // rising behind the roof. Official shapes are only turned, scaled or cropped, never flipped or redrawn.
+  // the whole mark centred on (cx, cy), radius R, turned `rot` degrees; c: { band, petal, core, gold (petal index), alpha }
+  K.mark = (cx, cy, R, rot, c, clip) => {
+    ctx.save(); if (clip) ctx.clip(clip); ctx.globalAlpha = c.alpha == null ? 1 : c.alpha;
+    ctx.translate(cx, cy); ctx.rotate(rot * D2R); ctx.scale(R / 100, R / 100);
+    ctx.fillStyle = c.band; ctx.fill(P.bands);
+    P.petals.forEach((p, i) => { ctx.fillStyle = i === c.gold ? GOLD : c.petal; ctx.fill(p); });
+    ctx.fillStyle = c.core; ctx.fill(P.core, 'evenodd');
+    ctx.restore();
+  };
+  // a plain crescent; the horns open towards `dir` degrees (-90 = up)
+  K.crescent = (cx, cy, R, dir, col) => { ctx.save(); ctx.fillStyle = col; ctx.fill(crescentPath(cx, cy, R, dir)); ctx.restore(); };
+  // the new crescent (hilal) cut from the mark. (x, y) in English coordinates;
+  // the horns open towards `dir`, and the mark turns so its gold petal sits at the crescent's widest point.
+  // Returns the tip of its upper horn, where a lantern can hang.
+  K.hilal = (x, y, R, dir, c) => {
+    const cx = K.X(x), d = rtl ? 180 - dir : dir, g = BRAND.mark.petals[c.gold].c, cut = 0.36, inner = 0.84;
+    const rot = d + 180 - Math.atan2(g[1], g[0]) / D2R;
+    K.mark(cx, y, R, rot, c, crescentPath(cx, y, R * 1.02, d, cut, inner));
+    const be = Math.acos((1 - inner * inner + cut * cut) / (2 * cut)) / D2R;
+    const tips = [d + be, d - be].map((a) => [cx + R * Math.cos(a * D2R), y + R * Math.sin(a * D2R)]);
+    return tips[0][1] < tips[1][1] ? tips[0] : tips[1];
+  };
+  // small petals scattered like stars or confetti: [x, y, length, angle, colour] in English coordinates
+  K.scatter = (list, alpha = 1) => { for (const [x, y, len, out, col] of list) K.pm(0, x, y, len, out, col, alpha); };
+  // a soft pool of light (dark backgrounds only)
+  K.halo = (x, y, rad, col, a) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, hexA(col, a)); g.addColorStop(1, hexA(col, 0));
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2); ctx.restore();
+  };
+  // a lantern on a cord: the core pentagon hung point-down, lit by a petal flame, a petal tassel below.
+  // (x, y): the top of its ring, s: its size (the frame is about 0.55 s wide; the whole lantern about 0.95 s tall);
+  // the cord runs up to `from` (the top edge by default, or a horn of the crescent).
+  K.lantern = (x, y, s, line, light, from = -2) => {
+    const k = s / 100, by = y + 0.42 * s; // the core spans about ±30 units: turned over, its flat side is on top
+    K.halo(x, by, s * 0.75, light, 0.16);
+    ctx.save(); ctx.strokeStyle = line; ctx.fillStyle = line; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, s * 0.007); ctx.beginPath(); ctx.moveTo(x, from); ctx.lineTo(x, y); ctx.stroke();
+    ctx.lineWidth = Math.max(1.2, s * 0.012); ctx.beginPath(); ctx.arc(x, y + 0.025 * s, 0.025 * s, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y + 0.165 * s, 0.11 * s, Math.PI, 0); ctx.fill(); // the domed cap
+    ctx.fillRect(x - 0.2 * s, y + 0.158 * s, 0.4 * s, 0.026 * s);
+    const glass = new Path2D(); // the inside of the frame, lit
+    for (let i = 0; i < 5; i++) { const a = (90 + i * 72) * D2R; glass[i ? 'lineTo' : 'moveTo'](x + 0.27 * s * Math.cos(a), by + 0.27 * s * Math.sin(a)); }
+    glass.closePath();
+    const g = ctx.createRadialGradient(x, by, 0, x, by, 0.28 * s); g.addColorStop(0, hexA(light, 0.42)); g.addColorStop(1, hexA(light, 0.06));
+    ctx.fillStyle = g; ctx.fill(glass);
+    K.petal(0, x, by + 0.015 * s, 0.2 * s, rtl ? MIRROR[0] - 90 : 90, light); // the flame: a petal, point up
+    ctx.save(); ctx.translate(x, by); ctx.rotate(Math.PI); ctx.scale(k, k); ctx.fillStyle = line; ctx.fill(P.core, 'evenodd'); ctx.restore();
+    ctx.beginPath(); ctx.arc(x, by + 0.33 * s, 0.024 * s, 0, Math.PI * 2); ctx.fill();
+    K.petal(0, x, by + 0.43 * s, 0.17 * s, rtl ? MIRROR[0] + 90 : -90, line); // the tassel: a petal, point down
+    ctx.restore();
+  };
+  // a mosque standing on (cx, base) whose dome is the mark rising behind the roof; R is the dome's radius.
+  // Five pentagon windows, minarets ending in a petal, crescents on top. sil: the building; c: the mark's colours.
+  K.mosque = (cx, base, R, sil, c, light) => {
+    const X = (u) => cx + u * R, Y = (v) => base - v * R, p = new Path2D(), roof = 0.95, drum = 0.2, dc = roof + drum;
+    const rect = (u0, v0, u1, v1) => p.rect(X(u0), Y(v1), (u1 - u0) * R, (v1 - v0) * R);
+    rect(-1.25, 0, 1.25, roof); rect(-1.32, roof - 0.05, 1.32, roof + 0.04); rect(-0.97, roof, 0.97, dc);
+    for (const s of [-1, 1]) {
+      const m = s * 1.62;
+      rect(Math.min(s * 1.25, m), 0, Math.max(s * 1.25, m), 0.5); // arcade to the minaret
+      rect(m - 0.11, 0, m + 0.11, 2.1); rect(m - 0.2, 1.62, m + 0.2, 1.71); rect(m - 0.08, 1.7, m + 0.08, 2.52); rect(m - 0.13, 2.48, m + 0.13, 2.56);
+    }
+    ctx.save(); ctx.fillStyle = sil; ctx.fill(p); ctx.restore();
+    const clip = new Path2D(); clip.rect(X(-1.2), Y(dc + 1.2), 2.4 * R, 1.2 * R + 0.5);
+    K.mark(cx, Y(dc), R, 0, c, clip); // the dome
+    ctx.save(); ctx.fillStyle = light;
+    for (let i = -2; i <= 2; i++) ctx.fill(K.pent(X(i * 0.46), Y(0.46), 0.13 * R)); // five windows, one per petal
+    for (const s of [-1, 1]) ctx.fill(K.pent(X(s * 1.62), Y(1.25), 0.065 * R));
+    ctx.strokeStyle = light; ctx.lineWidth = Math.max(1, R * 0.03); ctx.lineCap = 'round';
+    const fin = (u, v0, v1, r) => { ctx.beginPath(); ctx.moveTo(X(u), Y(v0)); ctx.lineTo(X(u), Y(v1)); ctx.stroke(); K.crescent(X(u), Y(v1) - r * 0.85, r, -90, light); };
+    fin(0, dc + 0.98, dc + 1.22, 0.13 * R);
+    for (const s of [-1, 1]) {
+      const m = s * 1.62, out = s < 0 ? 90 : MIRROR[0] - 90; // the petal tip, point up; the right one turned to mirror the left
+      K.petal(0, X(m), Y(2.68), 0.36 * R, out, c.petal);
+      fin(m, 2.8, 2.96, 0.075 * R);
+    }
+    ctx.restore();
+  };
+  // The Kaaba, kept plain out of respect (black kiswa, gold band and door: no logo shapes on it), seen a little from
+  // above, with the tawaf around it: rings of small petals flowing anticlockwise, like pilgrims in ihram. The scene is
+  // never mirrored for Arabic, so the tawaf always turns the right way. (cx, base): the middle of its foot; s: its width;
+  // c: { crowd: [inner ring colour, outer ring colour], ring: colour of the rings }; every sixth petal is gold
+  K.kaaba = (cx, base, s, c) => {
+    const Lw = 0.58 * s, Rw = 0.42 * s, t = 0.2, h = 0.7 * s, x0 = cx + (Lw - Rw) / 2, fy = base - (Lw + Rw) * t / 2;
+    const rings = [[0.76 * s, 18, 0.058 * s, 0.2], [0.98 * s, 24, 0.062 * s, 0.5]]; // radius, petals, size, phase
+    const crowd = (front) => rings.forEach(([rx, n, len, ph], k) => {
+      const ry = rx * 0.3;
+      for (let j = 0; j < n; j++) {
+        const a = ph + (j / n) * Math.PI * 2, sn = Math.sin(a);
+        if ((sn < 0) !== front) continue;
+        const dir = Math.atan2(-ry * Math.cos(a), -rx * sn) / D2R; // anticlockwise, seen from above
+        K.petal((j + k) % 5, cx + rx * Math.cos(a), fy - ry * sn, len * (1 - 0.22 * sn), dir, j % 6 === 2 ? GOLD : c.crowd[k], 1 - 0.35 * Math.max(0, sn));
+      }
+    });
+    ctx.save(); ctx.strokeStyle = c.ring; ctx.lineWidth = Math.max(1, s * 0.006);
+    for (const [rx] of rings) { ctx.beginPath(); ctx.ellipse(cx, fy, rx, rx * 0.3, 0, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+    crowd(false);
+    const N = [x0, base], L = [x0 - Lw, base - Lw * t], R = [x0 + Rw, base - Rw * t], B = [x0 - Lw + Rw, base - (Lw + Rw) * t];
+    const up = (p, k = 1) => [p[0], p[1] - h * k], mix = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+    const quad = (pts, col) => { const p = new Path2D(); pts.forEach((q, i) => p[i ? 'lineTo' : 'moveTo'](q[0], q[1])); p.closePath(); ctx.fillStyle = col; ctx.fill(p); };
+    ctx.save();
+    quad([L, N, up(N), up(L)], '#151515'); quad([N, R, up(R), up(N)], '#2A2A2A'); quad([up(L), up(N), up(R), up(B)], '#3A3A3A');
+    const band = (a, b, col) => quad([up(a, 0.66), up(b, 0.66), up(b, 0.75), up(a, 0.75)], col);
+    band(L, N, '#E2B94A'); band(N, R, GOLD); // the gold band (hizam)
+    const d0 = mix(L, N, 0.66), d1 = mix(L, N, 0.82); // the raised door, near the corner
+    quad([up(d0, 0.17), up(d1, 0.17), up(d1, 0.46), up(d0, 0.46)], '#E2B94A');
+    ctx.restore();
+    crowd(true);
+  };
   return K;
 }
+// a crescent outline: outer arc, then the inner arc back (one path, so no edge of the cut-away disc shows)
+function crescentPath(cx, cy, R, dir, cut = 0.3, inner = 0.86) {
+  const al = dir * D2R, d = R * cut, r = R * inner, a = (R * R - r * r + d * d) / (2 * d), h = Math.sqrt(Math.max(0, R * R - a * a));
+  const be = Math.acos(a / R), de = Math.atan2(h, a - d), ix = cx + d * Math.cos(al), iy = cy + d * Math.sin(al);
+  const p = new Path2D(); p.arc(cx, cy, R, al + be, al - be, false); p.arc(ix, iy, r, al - de, al + de, true); p.closePath();
+  return p;
+}
+const hexA = (c, a) => { const n = parseInt(c.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
 
 // ------------------------------------------------------------------ designs
 // Each design works in three shapes (wide card, square, tall story). Positions are fractions of W and H.
@@ -633,6 +794,109 @@ const DESIGNS = {
     K.text(r, { size, rule: T.accent });
     K.logoAt('start', inset, ly, lh);
   } },
+
+  // Made for one occasion each (see `only`): shown first for that message, with the coming Hijri year above the title.
+  // Both are built from the mark (see K.hilal, K.lantern, K.mosque).
+  // Ramadan: the new crescent cut from the mark, a lantern made of its core (petal flame) hanging from the upper horn.
+  crescent: { name: 'Crescent', tones: ['navy', 'sand', 'white'], moods: BRIGHT, only: ['ramadan'], draw(K) {
+    const { W, H, m, T, shape } = K, A = ART[K.st.tone]; K.bg(T.bg);
+    const mk = { ...A.mark, gold: 0 }, star = A.star;
+    // the crescent, with one lantern hanging from its upper horn
+    const moon = (x, y, R, dir) => {
+      const [hx, hy] = K.hilal(x, y, R, dir, mk);
+      K.lantern(hx, hy + R * 0.2, R * 0.78, A.line, A.light, hy);
+    };
+    let lh, inset, ly, r, size;
+    if (shape === 'wide') {
+      moon(W * 0.775, H * 0.46, H * 0.32, 205);
+      K.scatter([[W * 0.62, H * 0.12, H * 0.028, -20, star], [W * 0.64, H * 0.9, H * 0.024, 200, star], [W * 0.95, H * 0.92, H * 0.02, 110, star], [W * 0.96, H * 0.08, H * 0.018, 40, star]], 0.7);
+      lh = H * 0.085; inset = W * 0.075; ly = H - H * 0.08 - lh; size = H * 0.095;
+      r = K.R(inset, H * 0.1, W * 0.5, ly - H * 0.06 - H * 0.1);
+    } else if (shape === 'square') {
+      moon(W * 0.76, H * 0.185, m * 0.16, 205);
+      K.scatter([[W * 0.14, H * 0.1, m * 0.026, -20, star], [W * 0.36, H * 0.2, m * 0.02, 160, star], [W * 0.5, H * 0.07, m * 0.018, 60, star]], 0.7);
+      lh = m * 0.075; inset = W * 0.08; ly = H - H * 0.08 - lh; size = m * 0.085;
+      r = K.R(inset, H * 0.375, W * 0.84, ly - H * 0.05 - H * 0.375);
+    } else {
+      moon(W * 0.6, H * 0.19, W * 0.3, 205);
+      K.scatter([[W * 0.12, H * 0.09, W * 0.03, -20, star], [W * 0.17, H * 0.3, W * 0.024, 150, star], [W * 0.94, H * 0.06, W * 0.02, 70, star]], 0.7);
+      lh = W * 0.09; inset = W * 0.09; ly = H - H * 0.07 - lh; size = W * 0.12;
+      r = K.R(inset, H * 0.4, W * 0.82, ly - H * 0.05 - H * 0.4);
+    }
+    K.text(r, { size, rule: T.accent, kicker: { text: hijriLine(9, K.st.lang), color: A.kick } });
+    K.logoAt('start', inset, ly, lh);
+  } },
+
+  // Eid al-Fitr: a mosque whose dome is the mark, a crescent cut from the mark above it, petals drifting like confetti.
+  dome: { name: 'Dome', tones: ['teal', 'navy', 'sand', 'white'], moods: BRIGHT, only: ['eidfitr'], draw(K) {
+    const { W, H, m, T, shape } = K, A = ART[K.st.tone]; K.bg(T.bg);
+    const mk = { ...A.mark, gold: K.rtl ? 0 : 4 }, st = A.star;
+    let lh, ly, r, size, inset = 0, align = 'center', where = 'center';
+    if (shape === 'wide') {
+      if (A.halo) K.halo(K.X(W * 0.79), H * 0.72, W * 0.36, WHITE, 0.06);
+      K.mosque(K.X(W * 0.79), H, H * 0.165, A.sil, mk, A.light);
+      K.hilal(W * 0.85, H * 0.21, H * 0.14, 215, { ...mk, gold: 0 });
+      K.scatter([[W * 0.63, H * 0.16, H * 0.03, -30, GOLD], [W * 0.7, H * 0.36, H * 0.022, 120, st], [W * 0.96, H * 0.44, H * 0.024, 40, GOLD], [W * 0.68, H * 0.06, H * 0.018, 200, st]], 0.85);
+      lh = H * 0.085; inset = W * 0.075; ly = H - H * 0.08 - lh; size = H * 0.095; align = 'start'; where = 'start';
+      r = K.R(inset, H * 0.1, W * 0.5, ly - H * 0.06 - H * 0.1);
+    } else if (shape === 'square') {
+      if (A.halo) K.halo(W / 2, H * 0.82, W * 0.42, WHITE, 0.06);
+      K.mosque(W / 2, H, W * 0.13, A.sil, mk, A.light);
+      K.hilal(W * 0.85, H * 0.7, m * 0.07, 215, { ...mk, gold: 0 });
+      K.scatter([[W * 0.12, H * 0.68, m * 0.026, -30, GOLD], [W * 0.2, H * 0.88, m * 0.02, 120, st], [W * 0.92, H * 0.9, m * 0.02, 40, st]], 0.85);
+      lh = m * 0.066; ly = H * 0.07; size = m * 0.08;
+      const top = ly + lh + H * 0.05;
+      r = { x: W * 0.12, y: top, w: W * 0.76, h: H * 0.57 - top };
+    } else {
+      if (A.halo) K.halo(W / 2, H * 0.84, W * 0.62, WHITE, 0.06);
+      K.mosque(W / 2, H, W * 0.2, A.sil, mk, A.light);
+      K.hilal(W * 0.8, H * 0.585, W * 0.08, 215, { ...mk, gold: 0 });
+      K.scatter([[W * 0.15, H * 0.6, W * 0.03, -30, GOLD], [W * 0.06, H * 0.74, W * 0.022, 120, st], [W * 0.95, H * 0.72, W * 0.022, 40, st]], 0.85);
+      lh = W * 0.085; ly = H * 0.06; size = W * 0.1;
+      const top = ly + lh + H * 0.05;
+      r = { x: W * 0.11, y: top, w: W * 0.78, h: H * 0.54 - top };
+    }
+    K.text(r, { size, align, rule: T.accent, kicker: { text: hijriLine(10, K.st.lang), color: A.kick } });
+    K.logoAt(where, inset, ly, lh);
+  } },
+
+  // Eid al-Adha: the Kaaba with the tawaf around it in petals, and a crescent cut from the mark above.
+  kaaba: { name: 'Kaaba', tones: ['sand', 'navy', 'teal', 'white'], moods: BRIGHT, only: ['eidadha'], draw(K) {
+    const { W, H, m, T, shape } = K, A = ART[K.st.tone]; K.bg(T.bg);
+    const mk = { ...A.mark, gold: 0 }, c = { crowd: A.crowd, ring: A.ring };
+    let lh, ly, r, size, inset = 0, align = 'center', where = 'center';
+    if (shape === 'wide') {
+      if (A.halo) K.halo(K.X(W * 0.8), H * 0.6, W * 0.3, WHITE, 0.08);
+      K.hilal(W * 0.87, H * 0.19, H * 0.12, 215, mk);
+      K.kaaba(K.X(W * 0.795), H * 0.72, H * 0.3, c);
+      lh = H * 0.085; inset = W * 0.075; ly = H - H * 0.08 - lh; size = H * 0.095; align = 'start'; where = 'start';
+      r = K.R(inset, H * 0.1, W * 0.5, ly - H * 0.06 - H * 0.1);
+    } else if (shape === 'square') {
+      if (A.halo) K.halo(W / 2, H * 0.78, W * 0.36, WHITE, 0.08);
+      K.hilal(W * 0.85, H * 0.64, m * 0.065, 215, mk);
+      K.kaaba(W / 2, H * 0.86, m * 0.25, c);
+      lh = m * 0.066; ly = H * 0.07; size = m * 0.08;
+      const top = ly + lh + H * 0.05;
+      r = { x: W * 0.12, y: top, w: W * 0.76, h: H * 0.57 - top };
+    } else {
+      if (A.halo) K.halo(W / 2, H * 0.78, W * 0.6, WHITE, 0.08);
+      K.hilal(W * 0.82, H * 0.62, W * 0.075, 215, mk);
+      K.kaaba(W / 2, H * 0.86, W * 0.4, c);
+      lh = W * 0.085; ly = H * 0.06; size = W * 0.1;
+      const top = ly + lh + H * 0.05;
+      r = { x: W * 0.11, y: top, w: W * 0.78, h: H * 0.56 - top };
+    }
+    K.text(r, { size, align, rule: T.accent, kicker: { text: hijriLine(12, K.st.lang), color: A.kick } });
+    K.logoAt(where, inset, ly, lh);
+  } },
+};
+// colours for the occasion art on each background: the mark, lantern lines, light (glow, windows, flames), the mosque,
+// the small petals, the tawaf (petals and rings), the date line
+const ART = {
+  navy: { mark: { band: TEAL, petal: WHITE, core: WHITE }, line: GOLD, light: GOLD, sil: TEAL, star: WHITE, crowd: [WHITE, TEAL70], ring: 'rgba(255,255,255,.16)', kick: GOLD, halo: true },
+  teal: { mark: { band: NAVY, petal: WHITE, core: WHITE }, line: WHITE, light: GOLD, sil: NAVY, star: WHITE, crowd: [WHITE, NAVY], ring: 'rgba(255,255,255,.28)', kick: WHITE, halo: true },
+  sand: { mark: { band: TEAL, petal: NAVY, core: NAVY }, line: NAVY, light: GOLD, sil: NAVY, star: TEAL, crowd: [NAVY, TEAL], ring: 'rgba(22,54,92,.16)', kick: '#126F71', halo: false },
+  white: { mark: { band: TEAL, petal: NAVY, core: NAVY }, line: TEAL, light: GOLD, sil: TEAL, star: TEAL70, crowd: [NAVY, TEAL], ring: 'rgba(26,143,145,.25)', kick: '#126F71', halo: false },
 };
 
 function render(cv, st, px) {
@@ -655,7 +919,10 @@ const store = {
 const st = { cat: 'thank', tpl: 'thanks', lang: 'en', mood: 'thanks', to: '', title: '', body: '', from: store.get('from'), role: store.get('role'), design: 'petal', tone: 'white', fmt: 'card', dirty: false };
 const fieldIds = ['to', 'title', 'body', 'from', 'role'];
 
-const allowedDesigns = () => Object.keys(DESIGNS).filter((d) => DESIGNS[d].moods.includes(st.mood));
+// designs made for one occasion (`only`) appear for that message alone, ahead of the others
+const allowedDesigns = () => Object.keys(DESIGNS)
+  .filter((d) => DESIGNS[d].moods.includes(st.mood) && (!DESIGNS[d].only || DESIGNS[d].only.includes(st.tpl)))
+  .sort((a, b) => !!DESIGNS[b].only - !!DESIGNS[a].only);
 const allowedTones = (d = st.design) => DESIGNS[d].tones.filter((t) => !(st.mood === 'calm' && t === 'teal'));
 function fixLook() {
   if (!allowedDesigns().includes(st.design)) st.design = CAT[st.cat].design;
@@ -666,6 +933,7 @@ function applyTemplate(id) {
   st.tpl = id; st.cat = t.cat; st.mood = c.mood;
   st.title = t[st.lang].title; st.body = t[st.lang].body; st.dirty = false;
   if (moodChanged) { st.design = c.design; st.tone = c.tone; }
+  if (t.design) { st.design = t.design; st.tone = t.tone; } // its own design, e.g. Lanterns for Ramadan
   fixLook(); syncFields(); refreshAll();
 }
 
@@ -719,7 +987,9 @@ function renderDesigns() {
     box.appendChild(b); thumbs.push({ d, cv });
   }
   drawThumbs();
-  $('lookNote').textContent = st.mood === 'calm' ? 'Condolence and care messages use the quieter designs and colours.' : '';
+  const own = allowedDesigns().find((d) => DESIGNS[d].only);
+  $('lookNote').textContent = st.mood === 'calm' ? 'Condolence and care messages use the quieter designs and colours.'
+    : own ? `${DESIGNS[own].name} is made for ${TPL[st.tpl].name} and shows the coming Hijri year.` : '';
 }
 function renderTones() {
   const box = $('tones'); box.textContent = '';
@@ -814,7 +1084,7 @@ $('reset').onclick = () => {
 };
 $('blank').onclick = () => {
   Object.assign(st, { tpl: '', to: '', title: '', body: '', dirty: true });
-  syncFields(); refreshAll(); $('title').focus();
+  fixLook(); syncFields(); refreshAll(); $('title').focus();
 };
 
 for (const k of fieldIds) {
