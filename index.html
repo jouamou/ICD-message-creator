@@ -919,9 +919,11 @@ const store = {
 const st = { cat: 'thank', tpl: 'thanks', lang: 'en', mood: 'thanks', to: '', title: '', body: '', from: store.get('from'), role: store.get('role'), design: 'petal', tone: 'white', fmt: 'card', dirty: false };
 const fieldIds = ['to', 'title', 'body', 'from', 'role'];
 
-// designs made for one occasion (`only`) appear for that message alone, ahead of the others
+// designs made for one occasion (`only`) appear for that message alone, ahead of the others, and only while its own
+// tab is open: never under Thank you, Celebrate or Care
 const allowedDesigns = () => Object.keys(DESIGNS)
-  .filter((d) => DESIGNS[d].moods.includes(st.mood) && (!DESIGNS[d].only || DESIGNS[d].only.includes(st.tpl)))
+  .filter((d) => DESIGNS[d].moods.includes(st.mood)
+    && (!DESIGNS[d].only || (DESIGNS[d].only.includes(st.tpl) && TPL[st.tpl].cat === st.cat)))
   .sort((a, b) => !!DESIGNS[b].only - !!DESIGNS[a].only);
 const allowedTones = (d = st.design) => DESIGNS[d].tones.filter((t) => !(st.mood === 'calm' && t === 'teal'));
 function fixLook() {
@@ -933,7 +935,7 @@ function applyTemplate(id) {
   st.tpl = id; st.cat = t.cat; st.mood = c.mood;
   st.title = t[st.lang].title; st.body = t[st.lang].body; st.dirty = false;
   if (moodChanged) { st.design = c.design; st.tone = c.tone; }
-  if (t.design) { st.design = t.design; st.tone = t.tone; } // its own design, e.g. Lanterns for Ramadan
+  if (t.design) { st.design = t.design; st.tone = t.tone; } // its own design, e.g. Crescent for Ramadan
   fixLook(); syncFields(); refreshAll();
 }
 
@@ -945,7 +947,15 @@ function renderCats() {
   const box = $('cats'); box.textContent = '';
   for (const c of CATS) {
     const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(c.id === st.cat), 'aria-controls': 'tpls' }, esc(c.label));
-    b.onclick = () => { st.cat = c.id; renderCats(); renderTpls(); };
+    // The card follows the tab: an untouched message gives way to the tab's first one. Text the person has edited
+    // stays, but the look returns to the tab's own design, so an occasion design never shows under another tab.
+    b.onclick = () => {
+      if (c.id === st.cat) return;
+      st.cat = c.id;
+      const first = TEMPLATES.find((t) => t.cat === c.id);
+      if (!st.dirty && first) applyTemplate(first.id);
+      else { fixLook(); refreshAll(); }
+    };
     box.appendChild(b);
   }
 }
